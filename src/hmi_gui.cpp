@@ -6,7 +6,11 @@
 HmiGui::HmiGui(QWidget *parent)
     : QMainWindow(parent), clientSocket_(nullptr)
 {
-    // Create central widget and layout
+
+    // Set the window flag to always stay on top.
+    setWindowFlags(windowFlags() | Qt::WindowStaysOnTopHint);
+
+    // Create the central widget and layout.
     centralWidget_ = new QWidget(this);
     setCentralWidget(centralWidget_);
     QVBoxLayout *mainLayout = new QVBoxLayout(centralWidget_);
@@ -16,17 +20,17 @@ HmiGui::HmiGui(QWidget *parent)
     stopButton_ = new QPushButton("STOP", this);
     resetButton_ = new QPushButton("RESET", this);
 
-    // Set object names so that the style sheet rules for #startButton, etc., apply.
+    // Set object names so the global style sheet rules apply.
     startButton_->setObjectName("startButton");
     stopButton_->setObjectName("stopButton");
     resetButton_->setObjectName("resetButton");
 
-    // Set initial states (assume that with stop_execution true, START and RESET are enabled).
+    // Set initial enabled/disabled states.
     startButton_->setEnabled(true);
     resetButton_->setEnabled(true);
     stopButton_->setEnabled(false);
 
-    // Connect the button signals to our internal slots.
+    // Connect button signals to internal slots.
     connect(startButton_, &QPushButton::clicked, this, &HmiGui::onStartClicked);
     connect(stopButton_, &QPushButton::clicked, this, &HmiGui::onStopClicked);
     connect(resetButton_, &QPushButton::clicked, this, &HmiGui::onResetClicked);
@@ -62,8 +66,8 @@ HmiGui::~HmiGui()
 void HmiGui::updateStatus(bool execution_resumed, bool stop_execution, bool abort_mission)
 {
     // Update button states:
-    // - STOP button is enabled only if stop_execution is false.
-    // - START and RESET are enabled only if stop_execution is true.
+    // - When stop_execution is true: enable START and RESET; disable STOP.
+    // - Otherwise: disable START and RESET; enable STOP.
     if (stop_execution)
     {
         startButton_->setEnabled(true);
