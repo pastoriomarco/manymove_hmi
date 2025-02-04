@@ -23,18 +23,19 @@ Ros2Worker::Ros2Worker(const std::string &node_name, HmiGui *gui)
 
 void Ros2Worker::statusCallback(const std_msgs::msg::String::SharedPtr msg)
 {
-    // Here we do a simple (naive) parsing of the JSON text.
-    // In a production system you might use a JSON library.
+    // Naively parse the JSON string.
     std::string data = msg->data;
     bool execution_resumed = (data.find("\"execution_resumed\": true") != std::string::npos);
     bool stop_execution = (data.find("\"stop_execution\": true") != std::string::npos);
     bool abort_mission = (data.find("\"abort_mission\": true") != std::string::npos);
+    bool collision_detected = (data.find("\"collision_detected\": true") != std::string::npos);
 
-    // Invoke the GUI slot updateStatus() in a thread‐safe manner.
+    // Invoke the GUI slot updateStatus() in a thread-safe manner.
     QMetaObject::invokeMethod(gui_, "updateStatus", Qt::QueuedConnection,
                               Q_ARG(bool, execution_resumed),
                               Q_ARG(bool, stop_execution),
-                              Q_ARG(bool, abort_mission));
+                              Q_ARG(bool, abort_mission),
+                              Q_ARG(bool, collision_detected));
 }
 
 void Ros2Worker::callStartExecution()

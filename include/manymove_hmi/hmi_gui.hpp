@@ -5,6 +5,7 @@
 #include <QTcpServer>
 #include <QTcpSocket>
 #include <QPushButton>
+#include <QLabel>
 
 class HmiGui : public QMainWindow {
   Q_OBJECT
@@ -13,14 +14,11 @@ public:
     ~HmiGui();
 
 public slots:
-    /// Slot to update the GUI based on the received blackboard status.
-    /// The parameters are interpreted as:
-    /// - execution_resumed: current execution state,
-    /// - stop_execution: if the stop has been triggered,
-    /// - abort_mission: if an abort is active.
-    void updateStatus(bool execution_resumed, bool stop_execution, bool abort_mission);
+    /// Update the GUI based on the current blackboard status.
+    /// Now also includes collision_detected.
+    void updateStatus(bool execution_resumed, bool stop_execution, bool abort_mission, bool collision_detected);
 
-    // Slots that are called when the buttons are pressed.
+    // Slots called when buttons are pressed.
     void onStartClicked();
     void onStopClicked();
     void onResetClicked();
@@ -30,7 +28,7 @@ public slots:
     void onSocketDisconnected();
 
 signals:
-    /// Signals that request the corresponding ROS2 service call.
+    /// Signals requesting the corresponding ROS2 service calls.
     void startExecutionRequested();
     void stopExecutionRequested();
     void resetProgramRequested();
@@ -44,7 +42,10 @@ private:
     QTcpServer    *tcpServer_;
     QTcpSocket    *clientSocket_;
 
-    // Stores the last status as a JSON string to send to TCP clients.
+    // LED-like indicator for collision_detected.
+    QLabel        *ledIndicator_;
+
+    // Stores the last status as a JSON string for TCP clients.
     QString        lastStatusJson_;
 };
 

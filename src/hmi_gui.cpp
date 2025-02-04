@@ -6,11 +6,10 @@
 HmiGui::HmiGui(QWidget *parent)
     : QMainWindow(parent), clientSocket_(nullptr)
 {
-
-    // Set the window flag to always stay on top.
+    // Keep the window always on top:
     setWindowFlags(windowFlags() | Qt::WindowStaysOnTopHint);
 
-    // Create the central widget and layout.
+    // Create central widget and layout.
     centralWidget_ = new QWidget(this);
     setCentralWidget(centralWidget_);
     QVBoxLayout *mainLayout = new QVBoxLayout(centralWidget_);
@@ -30,7 +29,7 @@ HmiGui::HmiGui(QWidget *parent)
     resetButton_->setEnabled(true);
     stopButton_->setEnabled(false);
 
-    // Connect button signals to internal slots.
+    // Connect button signals to our internal slots.
     connect(startButton_, &QPushButton::clicked, this, &HmiGui::onStartClicked);
     connect(stopButton_, &QPushButton::clicked, this, &HmiGui::onStopClicked);
     connect(resetButton_, &QPushButton::clicked, this, &HmiGui::onResetClicked);
@@ -41,6 +40,17 @@ HmiGui::HmiGui(QWidget *parent)
     buttonLayout->addWidget(stopButton_);
     buttonLayout->addWidget(resetButton_);
     mainLayout->addLayout(buttonLayout);
+
+    // Create a horizontal layout for the collision LED indicator.
+    QHBoxLayout *collisionLayout = new QHBoxLayout();
+    QLabel *collisionLabel = new QLabel("Collision:", this);
+    ledIndicator_ = new QLabel(this);
+    ledIndicator_->setFixedSize(20, 20);
+    // Initially, no collision is detected: show green.
+    ledIndicator_->setStyleSheet("background-color: green; border-radius: 10px; border: 1px solid darkgreen;");
+    collisionLayout->addWidget(collisionLabel);
+    collisionLayout->addWidget(ledIndicator_);
+    mainLayout->addLayout(collisionLayout);
 
     // Set up a TCP server listening on port 5000.
     tcpServer_ = new QTcpServer(this);
@@ -63,11 +73,9 @@ HmiGui::~HmiGui()
     }
 }
 
-void HmiGui::updateStatus(bool execution_resumed, bool stop_execution, bool abort_mission)
+void HmiGui::updateStatus(bool execution_resumed, bool stop_execution, bool abort_mission, bool collision_detected)
 {
-    // Update button states:
-    // - When stop_execution is true: enable START and RESET; disable STOP.
-    // - Otherwise: disable START and RESET; enable STOP.
+    // Update button enabled/disabled states.
     if (stop_execution)
     {
         startButton_->setEnabled(true);
@@ -81,11 +89,22 @@ void HmiGui::updateStatus(bool execution_resumed, bool stop_execution, bool abor
         stopButton_->setEnabled(true);
     }
 
+    // Update the LED indicator based on collision_detected.
+    if (collision_detected)
+    {
+        ledIndicator_->setStyleSheet("background-color: red; border-radius: 10px; border: 1px solid darkred;");
+    }
+    else
+    {
+        ledIndicator_->setStyleSheet("background-color: green; border-radius: 10px; border: 1px solid darkgreen;");
+    }
+
     // Build a JSON string representing the current status.
-    lastStatusJson_ = QString("{\"execution_resumed\": %1, \"stop_execution\": %2, \"abort_mission\": %3}")
+    lastStatusJson_ = QString("{\"execution_resumed\": %1, \"stop_execution\": %2, \"abort_mission\": %3, \"collision_detected\": %4}")
                           .arg(execution_resumed ? "true" : "false")
                           .arg(stop_execution ? "true" : "false")
-                          .arg(abort_mission ? "true" : "false");
+                          .arg(abort_mission ? "true" : "false")
+                          .arg(collision_detected ? "true" : "false");
 
     // If a TCP client is connected, send the updated status.
     if (clientSocket_ && clientSocket_->state() == QAbstractSocket::ConnectedState)
@@ -115,7 +134,6 @@ void HmiGui::onNewConnection()
     clientSocket_ = tcpServer_->nextPendingConnection();
     connect(clientSocket_, &QTcpSocket::disconnected, this, &HmiGui::onSocketDisconnected);
     qDebug() << "New TCP client connected.";
-    // Optionally, send the current status immediately.
     if (!lastStatusJson_.isEmpty())
     {
         clientSocket_->write(lastStatusJson_.toUtf8());
